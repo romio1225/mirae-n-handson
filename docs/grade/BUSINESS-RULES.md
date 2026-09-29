@@ -397,3 +397,36 @@
 | 2026-09-29 | BR-17 | 교차 검증: BUSINESS-RULES 에만 있음 | 코드와 맞음 — `AGG:409-413` 에 status 조건 없음. CX 범위(제외 · 반올림 · 미제출 · 가중치) 밖 | 없음 |
 | 2026-09-29 | BR-27 (CX-12 · CX-14) | 교차 검증: CROSS-CHECK 에만 있음 | 코드와 맞음 — `AGG:85-86`, `REP:107-109` | BR-27 추가 |
 | 2026-09-29 | BR-24 · BR-28 | Day 1-3 동작 보존 테스트 베이스라인(`/report` 15건) | 통과 · 추가 — 공백 · 빈값 · 누락은 C1(BR-24). 11자 `C1`+공백8+`X` 와 소문자 `c1` 이 C1 과 같은 5건 → 인자 `VARCHAR(10)` 잘림 · 대소문자 무시 | BR-28 추가 |
+
+## 이관 대조 (usp_class_report → modern/api)
+
+> Day 1-3 실습 5. 약칭 `SVC` = `modern/api/src/main/java/com/example/grade/GradeReportService.java`, `REPO` = `modern/api/src/main/java/com/example/grade/GradeReportRepository.java`. 동작 보존 테스트(`characterization/tests/grade.test.js` 15건)는 수정 전후 모두 양쪽 통과. 아래는 테스트와 별개로 코드를 규칙별로 맞대 본 결과다.
+
+| 규칙 ID | 레거시 구현 | 새 구현 | 판정 | 차이 설명 |
+|---|---|---|---|---|
+| BR-24 | `GradeController.java:83-88` | `SVC:81-84` | 동일 | 없거나 공백이면 C1, trim |
+| BR-28 | `REP:24` (`VARCHAR(10)`) | `SVC:81-84` | 동일 | 10자 잘림을 Java 에서 재현. 전각 · NBSP · 전각 공백 · NUL 등 36개 입력을 양쪽에 보내 결과가 같음을 확인 |
+| 빈 학급 | `REP:33-51` | `SVC:63` | 동일 | 재적 0명 → 빈 결과 |
+| BR-01 · BR-02 | `REP:81-93` | `SVC:90-111` | 동일(수정 후) | X 를 먼저 빼고 최신 1건. **수정 전 다름** — SQL `PARTITION BY` 는 대소문자 · 뒤 공백을 무시하는데 Java 맵은 정확히 같은 문자열만 묶었다. `sqlKey`(`SVC:179`)로 맞춤 |
+| BR-05 · BR-06 | `REP:69-74` | `SVC:102`, `:115-118` | 동일 | `>` 비교, `ROUND(점수 × 0.9, 1)` = HALF_UP. 시드의 반올림 경계 5건으로 테스트가 확인 |
+| BR-21 | `REP:116-117`, `:136-145` | `SVC:103`, `:161` | 동일(수정 후) | 단원 키는 제출의 `unit_code`. 수정 전에는 단원 코드도 정확 일치로만 묶었다(위와 같은 원인) |
+| BR-22 | `REP:146-155` | `SVC:121-128` | 동일 | X 행 전부. 새 코드는 과제와 조인한 행에서 세지만 `assignment_id` 가 NOT NULL FK 라 빠지는 행이 없다 |
+| BR-18 · BR-19 | `REP:120-127` | `SVC:138-144`, `:170-173` | 동일(수정 후) | **수정 전 다름** — T-SQL 은 `DECIMAL(38,1) ÷ INT` 결과를 소수 6자리에서 **버린다**(`SELECT 2.0/3` = `.666666`). 새 코드는 6자리에서 HALF_UP 반올림했다. 반 인원 약 200만 명 미만에서는 최종 2자리 결과가 같다(0.1점 단위 합계 × 인원 1~60 전수 계산에서 차이 0건) |
+| BR-20 | `REP:128-133` | `SVC:147-155` | 동일 | 미제출 있으면 최저 0.0, 보너스는 제출자 최저 |
+| BR-25 · BR-27 | `GradeRepository.java:45-53`, `REP:107-109` | `SVC:188-190`, `UnitReportResponse` | 동일 | 자릿수 유지 문자열, NULL → `""`. 정수 열은 JSON 숫자(정규화 후 같음) |
+| 단원 순서 | `REP:193` | `REPO:28-29` | 동일 | DB 에서 `ORDER BY` (DB · 서버 정렬 규칙 모두 `SQL_Latin1_General_CP1_CI_AS`) |
+| BR-23 | `REP:161-177` | 없음 | **누락(의도)** | 보고 시각을 쓰지 않는다. 읽기 전용 계정 사용. 응답에 나오지 않아 테스트가 못 잡음 |
+| BR-26 | `GradeController.java:57-58`, `:108-113` | `GlobalExceptionHandler.java:53` | **다름** | DB 오류 시 레거시 502 + DB 원문 메시지, 새 API 500 + "서버 내부 오류". DB 를 끈 케이스가 없어 테스트가 못 잡음 |
+| 연결 풀 | `legacy/grade-mssql/src/main/resources/application.properties:11-13` (최대 3, 대기 5초) | `modern/api/src/main/resources/application.yml` `grades.datasource` (최대 2, 대기 3초) | **추가 · 다름** | 몰리면 새 API 가 더 빨리 실패한다 |
+| CORS | 없음 | `modern/api/src/main/java/com/example/config/WebConfig.java:18-20` | **추가** | 기존 `/api/**` 설정이 새 경로에도 걸려 `http://localhost:5173` GET 을 허용한다 |
+| 잠금 | `REP:158-177` (submission → grade_summary 갱신) | 없음 | **누락(부수효과)** | 쓰지 않으므로 `usp_aggregate_grades` 와의 교착(`incident-logs/d-mssql-deadlock`)이 새 API 에서는 생기지 않는다 |
+
+## 이관 회고
+
+| 바뀐 지점 | 레거시 동작 | AI가 만든 동작 | 테스트가 잡았나 | 다음에 막을 방법 |
+|---|---|---|---|---|
+| 평균 나눗셈 중간 자릿수 (BR-18 · 19) | 소수 6자리에서 버린 뒤 `ROUND(…, 2)` | 소수 6자리에서 HALF_UP 반올림한 뒤 2자리 반올림 | 못 잡음 (시드 규모에서는 결과가 같음) | 단위 테스트 `averageTruncatesIntermediateLikeTsql` 추가 · `CLAUDE.md` 한 줄: T-SQL 계산을 옮길 때 중간 결과의 타입 · 자릿수 · 버림/반올림을 DB 에서 `SELECT` 로 확인한 뒤 옮긴다 |
+| 묶는 키 비교 (BR-02 · 21 · 22) | `PARTITION BY` · `GROUP BY` · `JOIN` 이 대소문자 · 뒤 공백을 무시(CI 정렬 규칙) | Java 맵이 정확히 같은 문자열만 묶음 | 못 잡음 (시드에 대소문자 · 공백이 다른 키 없음) | 단위 테스트 `keysFollowCaseInsensitiveCollation` 추가 · `CLAUDE.md` 한 줄: SQL 의 그룹 · 조인을 Java 맵으로 옮길 때 DB 정렬 규칙을 키 비교에 반영한다 |
+| 보고 시각 기록 (BR-23) | 조회할 때마다 `reported_at` · `last_report_at` 갱신 | 기록하지 않음(읽기 전용 계정) | 못 잡음 (응답에 없는 쓰기 부수효과) | 이관 계획의 규칙 대응표에 쓰기 부수효과를 "이관 / 미이관" 칸으로 따로 둔다. 필요하면 DB 상태 스냅샷 테스트(심화)로 비교 |
+| DB 오류 응답 (BR-26) | HTTP 502 + DB 원문 메시지 | HTTP 500 + "서버 내부 오류" | 못 잡음 (DB 오류 케이스 없음) | 사람이 결정할 의심 동작으로 남김(원문 노출은 보안상 의심). 결정 뒤 `@WebMvcTest` 로 상태 코드를 고정 |
+| 시드 경계 공백 (BR-02 · 05 · 06 · 21) | — | — | 못 잡음 — `/report` 입력이 `class_id` 뿐이라 계산 규칙은 시드가 가진 경우만 검증됨. 정확히 마감+2일 · NULL 점수 · 같은 시각 재제출 · 최신이 X · 단원 불일치 0건 | 단위 테스트로 보강(`latePenaltyAppliesOnlyAfterGracePeriod`, `normalUnitCountsMissingAsZero`, `sameSubmittedAtPicksLargerId`, `excludedStatusIsRemovedBeforePickingLatest`, `unitKeyComesFromSubmissionRow`). 동작 보존 테스트용 시드 보강은 `db/` 변경이라 승인 뒤 진행 |

@@ -81,6 +81,8 @@ cd modern/web && npm run dev                                              # :517
 - 테스트가 실패하면 실패한 케이스와 차이를 그대로 보고한다. 요약해서 "거의 됐다"고 말하지 않는다.
 - 테스트를 통과시키려고 `characterization/` 의 테스트 코드나 스냅샷 파일을 고치지 않는다. 스냅샷을 바꿔야 한다고 판단되면 멈추고 묻는다.
 - 레거시 동작이 버그로 보여도 이관 중에는 고치지 않는다. "의심 동작" 목록으로 따로 보고한다.
+- T-SQL 계산을 Java 로 옮길 때 중간 결과의 타입 · 자릿수 · 버림/반올림을 DB 에서 `SELECT` 로 확인한 뒤 옮긴다(예: `DECIMAL ÷ INT` 는 소수 6자리에서 버린다).
+- SQL 의 `GROUP BY` · `PARTITION BY` · `JOIN` 을 Java 맵으로 옮길 때 DB 정렬 규칙(대소문자 · 뒤 공백 무시)을 키 비교에 반영한다.
 
 ## 금지 사항
 
@@ -101,9 +103,10 @@ cd modern/web && npm run dev                                              # :517
 modern/api/src/main/java/com/example/
 ├── item/          문항 · 단원 · 태그 (Item*, Unit*, Tag*)
 ├── assignment/    과제 배포 · 재배포(Distribution*) · 학급 리포트(Report*, ClassReport)
+├── grade/         성적 집계 학급 단원별 현황(GradeReport*) — MS-SQL grades DB 를 GradesJdbc 로 읽는다
 ├── common/        GlobalExceptionHandler, ErrorResponse, NotFoundException, ClockConfig
 └── config/        WebConfig (CORS: http://localhost:5173 의 GET 만 허용)
-modern/api/src/main/resources/application.yml       기본 = 로컬 MariaDB(:3306, itembank DB)
+modern/api/src/main/resources/application.yml       기본 = 로컬 MariaDB(:3306, itembank DB) + grades.datasource = 로컬 MS-SQL(:1433, grades DB, readonly, 비밀번호는 GRADES_DB_PASSWORD)
 modern/api/src/test/resources/application-test.yml  test 프로필 = H2 (MariaDB 모드)
 
 modern/web/src/
@@ -115,13 +118,13 @@ modern/web/src/
 
 - 데이터 흐름: 컴포넌트 → `hooks/use*` → `api/items.ts` → `getJson` → `modern/api` → Service → Repository → MariaDB.
 - `VITE_API_BASE` 가 없으면 `http://localhost:8080` 을 직접 호출하고, `VITE_API_BASE=""` 이면 상대 경로로 Vite 프록시(`/api` → 8080)를 탄다.
-- 기존 엔드포인트: `GET /api/units`, `GET /api/units/{code}/items`, `GET /api/items/{id}`, `GET /api/distributions/{id}`, `POST /api/distributions/{id}/redistribute`, `GET /api/classes/{id}/report`.
+- 기존 엔드포인트: `GET /api/units`, `GET /api/units/{code}/items`, `GET /api/items/{id}`, `GET /api/distributions/{id}`, `POST /api/distributions/{id}/redistribute`, `GET /api/classes/{id}/report`, `GET /api/grades/report?class_id=`.
 
 | 레거시 | 현행 |
 |---|---|
 | `legacy/item-bank-php/` (PHP 7.4, HTML 표 렌더) | `com.example.item` + `modern/web` |
 | `legacy/assignment-thymeleaf/` (Spring MVC + JDBC DAO) | `com.example.assignment` (Distribution*) |
-| `legacy/grade-mssql/` (로직 대부분이 `sql/usp_*.sql` 저장 프로시저) | `com.example.assignment` (Report*) |
+| `legacy/grade-mssql/` (로직 대부분이 `sql/usp_*.sql` 저장 프로시저) | `com.example.grade` (`usp_class_report` → GradeReport*) |
 
 - 이관 전후 동작이 같은지는 `characterization/` 의 스냅샷 테스트가 판정한다. 레거시 HTML 과 새 JSON 을 `lib/normalize.mjs` 가 같은 모양으로 바꿔 비교한다.
 - 도메인 용어: 문항 `item` · 단원 `unit` · 난이도 `level`(1~5) · 태그 `tag` / 학급 `class` · 과제 `assignment` · 배포 `distribution` · 제출 `submission` / 학생 `STU-<숫자>`.

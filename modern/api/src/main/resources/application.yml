@@ -25,6 +25,16 @@ spring:
       hibernate:
         format_sql: false
 
+# 성적 집계(grade) — 레거시 legacy/grade-mssql 과 같은 MS-SQL grades DB 를 읽기 전용 계정으로 조회한다.
+# 위 spring.datasource(MariaDB · itembank-pool)와 별개의 풀이다. 비밀번호는 환경 변수로만 받는다.
+grades:
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;databaseName=grades;encrypt=true;trustServerCertificate=true
+    username: readonly
+    password: ${GRADES_DB_PASSWORD:}
+    maximum-pool-size: 2
+    connection-timeout: 3000
+
 server:
   port: 8080
 

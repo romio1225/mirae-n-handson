@@ -24,6 +24,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+    // 성적 집계(grade) 이관 — 레거시와 같은 MS-SQL grades DB 를 읽는다. 버전은 Spring Boot BOM 이 관리한다.
+    runtimeOnly 'com.microsoft.sqlserver:mssql-jdbc'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'com.h2database:h2'
