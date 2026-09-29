@@ -335,6 +335,18 @@
 - 확신도: 확실
 - 비고: 교차 검증(CX-12 · CX-14)에서 추가했다. BR-25 의 `toPlainString` 때문에 이 자릿수가 화면에 그대로 나온다(`87.5`, `78.75`). 원천 `submission.score` 도 `DECIMAL(5,1)` 이다(`db/mssql/init/01-schema.sql:77`).
 
+## 8. 입력 인자
+
+### BR-28
+- 규칙: `class_id` 는 두 프로시저의 인자 `VARCHAR(10)` 로 들어가므로 10자를 넘으면 오류 없이 10자로 잘린다. 잘린 값의 뒤쪽 공백은 비교에서 무시되어, `C1` 뒤에 공백 8칸과 다른 글자를 붙인 11자 값도 `C1` 로 조회된다. 대소문자가 다른 `c1` 도 `C1` 로 조회된다.
+- 근거: `legacy/grade-mssql/sql/usp_class_report.sql:24`, `legacy/grade-mssql/sql/usp_aggregate_grades.sql:24`, `legacy/grade-mssql/src/main/java/com/example/grade/GradeController.java:83-88`
+- 근거 코드 (`REP:24`. `AGG:24` 도 같은 줄):
+    ```sql
+        @class_id VARCHAR(10)
+    ```
+- 확신도: 확실(선언) · 실행 확인(`characterization/tests/grade.test.js` 베이스라인에서 11자 값과 `c1` 이 C1 과 같은 5건)
+- 비고: Java 는 앞뒤 공백만 지우고(BR-24) 길이 · 대소문자는 검사하지 않는다. 화면 제목에는 잘리기 전 값이 그대로 나온다(`GradeController.java:68`). 대소문자 무시는 DB 정렬 규칙 때문으로 보이며 정렬 규칙 설정 자체는 확인하지 않았다.
+
 ## 매직 넘버
 
 | 값 | 위치 | 추정 의미 |
@@ -384,3 +396,4 @@
 | 2026-09-29 | BR-03 | 교차 검증: BUSINESS-RULES 에만 있음 | 코드와 맞음 — `AGG:104-109` 단원 적재에 학급 조건 없음. CX 가 놓침 | 없음 |
 | 2026-09-29 | BR-17 | 교차 검증: BUSINESS-RULES 에만 있음 | 코드와 맞음 — `AGG:409-413` 에 status 조건 없음. CX 범위(제외 · 반올림 · 미제출 · 가중치) 밖 | 없음 |
 | 2026-09-29 | BR-27 (CX-12 · CX-14) | 교차 검증: CROSS-CHECK 에만 있음 | 코드와 맞음 — `AGG:85-86`, `REP:107-109` | BR-27 추가 |
+| 2026-09-29 | BR-24 · BR-28 | Day 1-3 동작 보존 테스트 베이스라인(`/report` 15건) | 통과 · 추가 — 공백 · 빈값 · 누락은 C1(BR-24). 11자 `C1`+공백8+`X` 와 소문자 `c1` 이 C1 과 같은 5건 → 인자 `VARCHAR(10)` 잘림 · 대소문자 무시 | BR-28 추가 |
