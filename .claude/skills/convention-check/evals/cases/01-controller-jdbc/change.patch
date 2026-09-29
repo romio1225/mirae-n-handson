@@ -1,0 +1,62 @@
+diff --git a/modern/api/src/main/java/com/example/item/ItemSearchController.java b/modern/api/src/main/java/com/example/item/ItemSearchController.java
+new file mode 100644
+index 0000000..ceb7718
+--- /dev/null
++++ b/modern/api/src/main/java/com/example/item/ItemSearchController.java
+@@ -0,0 +1,56 @@
++package com.example.item;
++
++import java.sql.Connection;
++import java.sql.PreparedStatement;
++import java.sql.ResultSet;
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import javax.sql.DataSource;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++/**
++ * 난이도로 문항을 검색한다. GET /api/items/search?level=3
++ */
++@RestController
++@RequestMapping("/api/items")
++public class ItemSearchController {
++
++    private final DataSource dataSource;
++
++    public ItemSearchController(DataSource dataSource) {
++        this.dataSource = dataSource;
++    }
++
++    @GetMapping("/search")
++    public List<Map<String, Object>> searchByLevel(@RequestParam int level) {
++        System.out.println("searchByLevel called, level=" + level);
++
++        List<Map<String, Object>> result = new ArrayList<>();
++        String sql = "SELECT id, unit_id, title, level, status FROM item WHERE level = ? ORDER BY id";
++
++        try (Connection conn = dataSource.getConnection();
++             PreparedStatement ps = conn.prepareStatement(sql)) {
++            ps.setInt(1, level);
++            try (ResultSet rs = ps.executeQuery()) {
++                while (rs.next()) {
++                    Map<String, Object> row = new LinkedHashMap<>();
++                    row.put("id", rs.getInt("id"));
++                    row.put("unitId", rs.getInt("unit_id"));
++                    row.put("title", rs.getString("title"));
++                    row.put("level", rs.getInt("level"));
++                    row.put("status", rs.getString("status"));
++                    result.add(row);
++                }
++            }
++        } catch (Exception e) {
++        }
++
++        System.out.println("searchByLevel result size=" + result.size());
++        return result;
++    }
++}

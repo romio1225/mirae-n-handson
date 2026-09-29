@@ -1,0 +1,11 @@
+# 새 컨트롤러가 JDBC 로 직접 조회 · 예외를 삼킴 · System.out · Map 반환 · 테스트 없음. 공개 필터 · 범위 검증도 없음.
+# 형식: MUST|MUST_NOT <확장 정규식>  # 설명     (정규식과 설명 사이는 공백 두 칸 + #)
+MUST ItemSearchController\.java:([0-9]+ ?(-|–|~|,) ?)*(23|25)([^0-9]|$)  # 항목 1: DataSource 생성자 주입
+MUST ItemSearchController\.java:([0-9]+ ?(-|–|~|,) ?)*34([^0-9]|$)  # 항목 1: SQL 문자열
+MUST ItemSearchController\.java:([0-9]+ ?(-|–|~|,) ?)*(50|51)([^0-9]|$)  # 항목 2: 빈 catch
+MUST ItemSearchController\.java:([0-9]+ ?(-|–|~|,) ?)*31([^0-9]|$)  # 항목 3: System.out 첫째
+MUST ItemSearchController\.java:([0-9]+ ?(-|–|~|,) ?)*53([^0-9]|$)  # 항목 3: System.out 둘째
+MUST ItemSearchController\.java:([0-9]+ ?(-|–|~|,) ?)*30([^0-9]|$)  # 항목 6: Map 반환
+MUST \(R1\)  # 확인 필요: 공개 문항 필터 누락
+MUST \(R2\)  # 확인 필요: level 범위 검증 없음
+MUST 판정 요약  # 출력 형식 1단계

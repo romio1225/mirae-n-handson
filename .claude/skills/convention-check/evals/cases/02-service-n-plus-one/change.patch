@@ -1,0 +1,18 @@
+diff --git a/modern/api/src/main/java/com/example/item/ItemService.java b/modern/api/src/main/java/com/example/item/ItemService.java
+index ab92233..9be62fb 100644
+--- a/modern/api/src/main/java/com/example/item/ItemService.java
++++ b/modern/api/src/main/java/com/example/item/ItemService.java
+@@ -41,4 +41,13 @@ public class ItemService {
+         log.debug("unit {} has {} active items", unit.getCode(), items.size());
+         return items;
+     }
++
++    /** 가장 어려운 공개 문항이 있는 단원 코드 목록. */
++    public List<String> listUnitCodesWithHardestItems() {
++        return unitRepository.findAllByOrderByGradeAscCodeAsc().stream()
++            .filter(unit -> itemRepository.findByUnitCodeAndStatus(unit.getCode(), ItemStatus.ACTIVE).stream()
++                .anyMatch(item -> item.getLevel() == 5))
++            .map(Unit::getCode)
++            .toList();
++    }
+ }

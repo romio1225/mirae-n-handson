@@ -1,0 +1,13 @@
+diff --git a/modern/api/src/main/java/com/example/item/ItemController.java b/modern/api/src/main/java/com/example/item/ItemController.java
+index 59af702..ecd5881 100644
+--- a/modern/api/src/main/java/com/example/item/ItemController.java
++++ b/modern/api/src/main/java/com/example/item/ItemController.java
+@@ -19,7 +19,7 @@ public class ItemController {
+         this.itemService = itemService;
+     }
+ 
+-    /** {@code GET /api/items/{id}} — 문항 단건. */
++    /** {@code GET /api/items/{id}} — 문항 단건 조회(상태 무관). */
+     @GetMapping("/items/{id}")
+     public ItemResponse getItem(@PathVariable Integer id) {
+         return itemService.getItem(id);
