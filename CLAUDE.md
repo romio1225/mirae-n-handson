@@ -59,8 +59,8 @@ cd modern/web && npm run dev                                              # :517
 - 컴포넌트는 함수 컴포넌트이고 이름 있는 export(`export function X`)로 내보낸다. `export default`, 클래스 컴포넌트, `React.FC`, `defaultProps` 가 없다.
 - props 타입은 컴포넌트 파일 안에 `interface <컴포넌트명>Props` 로 선언한다.
 - 이벤트 prop 이름은 `on<동작>`, 컴포넌트 내부 핸들러 함수 이름은 `handle<동작>` 이다.
-- `fetch` 호출은 `src/api/client.ts` 의 `getJson` 한 곳에만 있다. 엔드포인트별 함수는 `src/api/items.ts`, 응답 타입은 `src/api/types.ts` 에 둔다.
-- 응답 타입의 필드명은 `modern/api` 의 `*Response` record 필드명과 같다.
+- `fetch` 호출은 `src/api/client.ts` 의 `getJson` 한 곳에만 있다. 엔드포인트별 함수는 도메인별 파일(`src/api/items.ts`, `src/api/grades.ts`), 응답 타입은 `src/api/types.ts` 에 둔다.
+- 응답 타입의 필드명은 `modern/api` 의 `*Response` 가 내보내는 JSON 필드명과 같다(`@JsonProperty` 가 있으면 그 이름, 예: `unit_name`).
 - 컴포넌트는 서버 데이터를 `src/hooks/` 의 `useApiQuery` 기반 훅으로만 읽는다. 컴포넌트 파일이 `src/api/` 의 함수를 직접 import 하지 않는다.
 - 조회 요청은 `AbortSignal` 을 받고, 훅의 cleanup 에서 취소한다.
 - 컴포넌트에서 HTTP 상태 코드를 비교하지 않는다. 오류 문구는 `useApiQuery` 의 `toErrorMessage` 가 만든다.
@@ -104,19 +104,20 @@ modern/api/src/main/java/com/example/
 ├── item/          문항 · 단원 · 태그 (Item*, Unit*, Tag*)
 ├── assignment/    과제 배포 · 재배포(Distribution*) · 학급 리포트(Report*, ClassReport)
 ├── grade/         성적 집계 학급 단원별 현황(GradeReport*) — MS-SQL grades DB 를 GradesJdbc 로 읽는다
-├── common/        GlobalExceptionHandler, ErrorResponse, NotFoundException, ClockConfig
+├── common/        GlobalExceptionHandler, ErrorResponse, NotFoundException(404), DatabaseUnavailableException(502), ClockConfig
 └── config/        WebConfig (CORS: http://localhost:5173 의 GET 만 허용)
 modern/api/src/main/resources/application.yml       기본 = 로컬 MariaDB(:3306, itembank DB) + grades.datasource = 로컬 MS-SQL(:1433, grades DB, readonly, 비밀번호는 GRADES_DB_PASSWORD)
 modern/api/src/test/resources/application-test.yml  test 프로필 = H2 (MariaDB 모드)
 
 modern/web/src/
-├── api/           client.ts(getJson, ApiError) · items.ts(엔드포인트 함수) · types.ts(응답 타입)
-├── hooks/         useApiQuery(공통 조회 상태) + useUnits · useUnitItems · useItem
+├── api/           client.ts(getJson, ApiError) · items.ts · grades.ts(엔드포인트 함수) · types.ts(응답 타입)
+├── hooks/         useApiQuery(공통 조회 상태) + useUnits · useUnitItems · useItem · useGradeReport
 ├── components/    화면 조각 + 같은 폴더의 *.test.tsx
 └── test/          mockFetch.ts · fixtures.ts
 ```
 
-- 데이터 흐름: 컴포넌트 → `hooks/use*` → `api/items.ts` → `getJson` → `modern/api` → Service → Repository → MariaDB.
+- 화면: `App.tsx` 의 `ModuleTabs` 로 문항 은행(`ItemBrowser`) · 성적 현황(`GradeReportView`)을 전환한다.
+- 데이터 흐름: 컴포넌트 → `hooks/use*` → `api/<도메인>.ts` → `getJson` → `modern/api` → Service → Repository → MariaDB.
 - `VITE_API_BASE` 가 없으면 `http://localhost:8080` 을 직접 호출하고, `VITE_API_BASE=""` 이면 상대 경로로 Vite 프록시(`/api` → 8080)를 탄다.
 - 기존 엔드포인트: `GET /api/units`, `GET /api/units/{code}/items`, `GET /api/items/{id}`, `GET /api/distributions/{id}`, `POST /api/distributions/{id}/redistribute`, `GET /api/classes/{id}/report`, `GET /api/grades/report?class_id=`.
 

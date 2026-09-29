@@ -29,6 +29,11 @@ describe('grade · 학급 단원별 현황(/report)', () => {
   });
 
   // ---------------------------------------------------------------- 경계값
+  // C4 는 경계 사례만 모은 시드 학급이다(db/mssql/init/02-seed.sql 끝, 제출 901~910).
+  it('경계 — C4: 마감+2일 정확히 · NULL 점수 · 같은 시각 재제출 · 최신 X · 단원 불일치 · 키 대소문자/공백 [BR-01 · BR-02 · BR-05 · BR-06 · BR-21]', async () => {
+    expect(await report({ class_id: 'C4' })).toMatchSnapshot();
+  });
+
   it('경계 — 앞뒤 공백 " C1 " 은 trim 되어 C1 [BR-24]', async () => {
     expect(await report({ class_id: ' C1 ' })).toMatchSnapshot();
   });

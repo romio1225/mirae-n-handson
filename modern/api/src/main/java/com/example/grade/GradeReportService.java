@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
  * 스프링 트랜잭션 관리자는 MariaDB(itembank-pool, 최대 5개)를 관리한다. 붙이면 쓰지도 않는 MariaDB 연결을 호출마다 붙잡는다.
  *
  * <p>옮기지 않은 것: 보고 시각 기록(BR-23, REP:161-177). 읽기 전용 계정으로 조회하므로 쓰지 않는다.
+ * DB 오류는 리포지토리가 502 로 바꾼다(BR-26 상태 코드는 같고, DB 원문 메시지는 싣지 않는다).
  */
 @Service
 public class GradeReportService {

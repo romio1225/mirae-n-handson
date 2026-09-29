@@ -1,18 +1,29 @@
 package com.example.grade;
 
+import com.example.common.DatabaseUnavailableException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Repository;
 
 /**
  * 성적 집계 MS-SQL 조회. 계산은 하지 않고 원자료 행만 돌려준다(계산은 {@link GradeReportService}).
  *
  * <p>레거시 {@code usp_class_report} 가 읽는 테이블(student · submission · assignment · unit)을 같은 조건으로 읽는다.
+ * DB 오류는 {@link DatabaseUnavailableException} 으로 감싸 던진다 → 502(레거시 BR-26 과 같은 상태 코드).
  */
 @Repository
 public class GradeReportRepository {
+
+    private static final Logger log = LoggerFactory.getLogger(GradeReportRepository.class);
+
+    /** 응답에 싣는 문구. DB 원문 메시지는 싣지 않는다. */
+    static final String UNAVAILABLE_MESSAGE = "성적 DB 조회에 실패했습니다";
 
     private static final String COUNT_ENROLLED_SQL =
         "SELECT COUNT(*) FROM dbo.student AS s WHERE s.class_id = :classId";
@@ -36,28 +47,40 @@ public class GradeReportRepository {
 
     /** 학급 재적 인원. */
     public int countEnrolled(String classId) {
-        Integer n = gradesJdbc.template().queryForObject(COUNT_ENROLLED_SQL, Map.of("classId", classId), Integer.class);
+        Integer n = query("countEnrolled", () ->
+            gradesJdbc.template().queryForObject(COUNT_ENROLLED_SQL, Map.of("classId", classId), Integer.class));
         return n == null ? 0 : n;
     }
 
     /** 학급 학생의 모든 제출 행(상태 X 포함)과 과제 마감 시각. */
     public List<SubmissionRow> findClassSubmissions(String classId) {
-        return gradesJdbc.template().query(CLASS_SUBMISSIONS_SQL, Map.of("classId", classId), (rs, rowNum) ->
-            new SubmissionRow(
-                rs.getInt("id"),
-                rs.getString("student_id"),
-                rs.getString("unit_code"),
-                rs.getString("assignment_id"),
-                rs.getBigDecimal("score"),
-                rs.getObject("submitted_at", LocalDateTime.class),
-                rs.getString("status"),
-                rs.getObject("due_at", LocalDateTime.class)));
+        return query("findClassSubmissions", () ->
+            gradesJdbc.template().query(CLASS_SUBMISSIONS_SQL, Map.of("classId", classId), (rs, rowNum) ->
+                new SubmissionRow(
+                    rs.getInt("id"),
+                    rs.getString("student_id"),
+                    rs.getString("unit_code"),
+                    rs.getString("assignment_id"),
+                    rs.getBigDecimal("score"),
+                    rs.getObject("submitted_at", LocalDateTime.class),
+                    rs.getString("status"),
+                    rs.getObject("due_at", LocalDateTime.class))));
     }
 
     /** 전 단원(학급과 무관), 단원 코드 순. */
     public List<UnitRow> findUnits() {
-        return gradesJdbc.template().query(UNITS_SQL, Map.of(), (rs, rowNum) ->
-            new UnitRow(rs.getString("code"), rs.getString("name"), rs.getBigDecimal("weight")));
+        return query("findUnits", () ->
+            gradesJdbc.template().query(UNITS_SQL, Map.of(), (rs, rowNum) ->
+                new UnitRow(rs.getString("code"), rs.getString("name"), rs.getBigDecimal("weight"))));
+    }
+
+    private static <T> T query(String operation, Supplier<T> call) {
+        try {
+            return call.get();
+        } catch (DataAccessException e) {
+            log.warn("grades query failed: {} ({})", operation, e.getClass().getSimpleName());
+            throw new DatabaseUnavailableException(UNAVAILABLE_MESSAGE, e);
+        }
     }
 
     /** 제출 한 행. {@code score} 는 NULL 일 수 있다. */

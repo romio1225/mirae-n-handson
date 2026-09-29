@@ -30,3 +30,27 @@ export interface Item {
   status: ItemStatus;
   tags: string[];
 }
+
+/**
+ * GET /api/grades/report?class_id= 의 단원 행 — com.example.grade.UnitReportResponse 의 JSON 필드명(@JsonProperty)과 같다.
+ * 점수는 레거시와 같은 자릿수를 살린 문자열(평균 둘째 자리, 최고 · 최저 첫째 자리)이고 값이 없으면 빈 문자열이다.
+ */
+export interface UnitReport {
+  unit: string;
+  unit_name: string;
+  enrolled: number;
+  submitted: number;
+  missing: number;
+  late: number;
+  excluded: number;
+  avg_score: string;
+  max_score: string;
+  min_score: string;
+}
+
+/** GET /api/grades/report 의 응답 — com.example.grade.GradeReportResponse 와 1:1. 없는 학급이면 items 가 빈 배열. */
+export interface GradeReport {
+  items: UnitReport[];
+  count: number;
+  message: string | null;
+}

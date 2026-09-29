@@ -79,6 +79,76 @@ exports[`grade · 학급 단원별 현황(/report) > 경계 — 11자 "C1XXXXXXX
 }
 `;
 
+exports[`grade · 학급 단원별 현황(/report) > 경계 — C4: 마감+2일 정확히 · NULL 점수 · 같은 시각 재제출 · 최신 X · 단원 불일치 · 키 대소문자/공백 [BR-01 · BR-02 · BR-05 · BR-06 · BR-21] 1`] = `
+{
+  "count": 5,
+  "message": null,
+  "rows": [
+    {
+      "avg_score": "48.00",
+      "enrolled": 5,
+      "excluded": 1,
+      "late": 0,
+      "max_score": "90.0",
+      "min_score": "0.0",
+      "missing": 1,
+      "submitted": 4,
+      "unit": "M5-1",
+      "unit_name": "분수의 덧셈과 뺄셈",
+    },
+    {
+      "avg_score": "15.40",
+      "enrolled": 5,
+      "excluded": 0,
+      "late": 1,
+      "max_score": "77.0",
+      "min_score": "0.0",
+      "missing": 4,
+      "submitted": 1,
+      "unit": "M5-2",
+      "unit_name": "분수의 곱셈",
+    },
+    {
+      "avg_score": "12.80",
+      "enrolled": 5,
+      "excluded": 0,
+      "late": 0,
+      "max_score": "64.0",
+      "min_score": "0.0",
+      "missing": 4,
+      "submitted": 1,
+      "unit": "M5-3",
+      "unit_name": "소수의 곱셈",
+    },
+    {
+      "avg_score": "0.00",
+      "enrolled": 5,
+      "excluded": 0,
+      "late": 0,
+      "max_score": "",
+      "min_score": "0.0",
+      "missing": 5,
+      "submitted": 0,
+      "unit": "M6-1",
+      "unit_name": "분수의 나눗셈",
+    },
+    {
+      "avg_score": "88.00",
+      "enrolled": 5,
+      "excluded": 0,
+      "late": 0,
+      "max_score": "88.0",
+      "min_score": "88.0",
+      "missing": 4,
+      "submitted": 1,
+      "unit": "M6-2",
+      "unit_name": "비와 비율 (보너스)",
+    },
+  ],
+  "status": 200,
+}
+`;
+
 exports[`grade · 학급 단원별 현황(/report) > 경계 — 소문자 "c1" (DB 정렬 규칙에 따른 일치 여부) [BR-24] 1`] = `
 {
   "count": 5,

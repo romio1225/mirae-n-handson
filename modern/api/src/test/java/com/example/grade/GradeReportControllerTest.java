@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.common.DatabaseUnavailableException;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,18 @@ class GradeReportControllerTest {
             .andExpect(jsonPath("$.items[0].enrolled").value(10))
             .andExpect(jsonPath("$.items[0].avg_score").value("64.28"))
             .andExpect(jsonPath("$.items[0].min_score").value("0.0"));
+    }
+
+    @Test
+    @DisplayName("성적 DB 조회가 실패하면 502, DB 원문 메시지 대신 일반 문구")
+    void databaseFailureReturns502() throws Exception {
+        when(gradeReportService.classReport("C1")).thenThrow(
+            new DatabaseUnavailableException("성적 DB 조회에 실패했습니다", new RuntimeException("Login failed")));
+
+        mockMvc.perform(get("/api/grades/report").param("class_id", "C1"))
+            .andExpect(status().isBadGateway())
+            .andExpect(jsonPath("$.status").value(502))
+            .andExpect(jsonPath("$.message").value("성적 DB 조회에 실패했습니다"));
     }
 
     @Test
