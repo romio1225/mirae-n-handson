@@ -28,7 +28,7 @@ server.registerTool(
 // - import 문도 이 자리에 함께 붙여 넣어도 된다
 // ================================================================
 import * as z from 'zod/v4';
-import { searchItems } from './itemApi.js';
+import { searchItems, updateItemTags } from './itemApi.js';
 
 /** 한 번에 돌려줄 수 있는 최대 건수 */
 const MAX_LIMIT = 20;
@@ -63,6 +63,36 @@ server.registerTool(
         ? JSON.stringify(items, null, 2)
         : `검색 결과 없음: ${JSON.stringify({ keyword, unit, difficulty, limit })}`;
     return { content: [{ type: 'text', text }] };
+  }
+);
+
+/** 한 문항에 붙일 수 있는 최대 태그 수 */
+const MAX_TAGS = 10;
+
+// 쓰기 도구(심화 2). 더미 API 의 메모리 배열만 바꾼다 — 서버를 다시 켜면 원래대로 돌아온다.
+// 쓰기를 여는 순간 권한 규칙도 같이 둔다: .claude/settings.json 의 permissions.ask 에 이 도구가 있다.
+server.registerTool(
+  'update_item_tags',
+  {
+    description:
+      '문항 하나의 태그 목록을 통째로 바꾼다(쓰기). 사용자가 특정 문항의 태그 변경을 명시적으로 요청했을 때만 사용한다. ' +
+      '조회만 필요하면 search_items 를 쓴다. 이 실습 서버에서는 메모리만 바뀌고 서버를 다시 켜면 원래대로 돌아온다.',
+    inputSchema: z.object({
+      id: z.number().int().positive().describe('태그를 바꿀 문항 id (search_items 결과의 id)'),
+      tags: z
+        .array(z.string().min(1))
+        .min(1)
+        .max(MAX_TAGS)
+        .describe(`새 태그 목록(기존 태그를 대체한다, 1~${MAX_TAGS}개)`)
+    })
+  },
+  async ({ id, tags }) => {
+    const updated = await updateItemTags(id, tags);
+    console.error(`update_item_tags: id=${id} ${updated ? '변경' : '없는 id'}`);
+    const text = updated
+      ? JSON.stringify(updated, null, 2)
+      : `문항 없음: ${JSON.stringify({ id })}`;
+    return { content: [{ type: 'text', text }], isError: updated === null };
   }
 );
 

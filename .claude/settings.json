@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["mcp__item-bank__search_items"],
+    "ask": ["mcp__item-bank__update_item_tags"]
+  }
+}
