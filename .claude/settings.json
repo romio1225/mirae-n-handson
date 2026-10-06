@@ -1,6 +1,10 @@
 {
   "permissions": {
-    "allow": ["mcp__item-bank__search_items"],
+    "allow": [
+      "mcp__item-bank__search_items",
+      "Bash(./gradlew test *)",
+      "Bash(npm test *)"
+    ],
     "ask": ["mcp__item-bank__update_item_tags"]
   }
 }
