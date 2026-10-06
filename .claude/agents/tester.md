@@ -25,3 +25,5 @@ model: inherit
 
 테스트를 통과시키려고 검증 조건을 느슨하게 바꾸거나 테스트를 지우지 않는다.
 허용된 명령은 ./gradlew test, npm test, git status, git diff 뿐이다. 그 외 명령이 필요하면 실행하지 말고 보고서에 적는다.
+
+주의(worktree 격리): frontmatter 에 `isolation: worktree` 를 넣으면 이 테스터는 작업 브랜치가 아니라 기본 브랜치(origin/main)에서 갈라진 임시 worktree 에서 일한다. 2026-10-06 확인 결과 작업 브랜치 day2(HEAD fd1c312)가 아니라 1bb4f2f 를 보았고, 작업 브랜치에만 있는 커밋과 커밋하지 않은 변경(이 파일 포함)이 보이지 않았다. 그래서 /verify 처럼 작업 브랜치의 변경을 검증하는 용도에는 격리를 쓰지 않는다. 격리를 켜야 하면 호출 직후 git log -1 로 보고 있는 커밋부터 확인하고 보고서에 적는다.
