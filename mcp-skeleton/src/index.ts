@@ -68,6 +68,8 @@ server.registerTool(
 
 /** 한 문항에 붙일 수 있는 최대 태그 수 */
 const MAX_TAGS = 10;
+/** 태그 하나의 최대 길이 */
+const MAX_TAG_LENGTH = 30;
 
 // 쓰기 도구(심화 2). 더미 API 의 메모리 배열만 바꾼다 — 서버를 다시 켜면 원래대로 돌아온다.
 // 쓰기를 여는 순간 권한 규칙도 같이 둔다: .claude/settings.json 의 permissions.ask 에 이 도구가 있다.
@@ -80,10 +82,10 @@ server.registerTool(
     inputSchema: z.object({
       id: z.number().int().positive().describe('태그를 바꿀 문항 id (search_items 결과의 id)'),
       tags: z
-        .array(z.string().min(1))
+        .array(z.string().trim().min(1).max(MAX_TAG_LENGTH))
         .min(1)
         .max(MAX_TAGS)
-        .describe(`새 태그 목록(기존 태그를 대체한다, 1~${MAX_TAGS}개)`)
+        .describe(`새 태그 목록(기존 태그를 대체한다, 1~${MAX_TAGS}개, 공백만 있는 태그는 거부, 중복은 하나로 합친다)`)
     })
   },
   async ({ id, tags }) => {
