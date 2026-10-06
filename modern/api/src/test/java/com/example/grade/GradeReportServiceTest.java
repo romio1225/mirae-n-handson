@@ -80,6 +80,41 @@ class GradeReportServiceTest {
     }
 
     @Test
+    @DisplayName("상태 비교도 DB 정렬 규칙을 따른다 — 소문자 x 와 뒤 공백이 붙은 'X ' 도 집계에서 빼고 제외 수에 센다")
+    void excludedStatusFollowsCaseInsensitiveCollation() {
+        when(gradeReportRepository.countEnrolled("C1")).thenReturn(1);
+        when(gradeReportRepository.findClassSubmissions("C1")).thenReturn(List.of(
+            submission(1, "STU-1", "M5-1", "70.0", DUE.minusDays(2), "S"),
+            submission(2, "STU-1", "M5-1", "95.0", DUE.minusDays(1), "x"),
+            submission(3, "STU-1", "M5-1", "99.0", DUE.minusHours(1), "X ")));
+        when(gradeReportRepository.findUnits()).thenReturn(List.of(NORMAL_UNIT));
+
+        UnitReportResponse row = gradeReportService.classReport("C1").items().get(0);
+
+        assertThat(row.submitted()).isEqualTo(1);
+        assertThat(row.excluded()).isEqualTo(2);
+        assertThat(row.maxScore()).isEqualTo("70.0");
+        assertThat(row.avgScore()).isEqualTo("70.00");
+    }
+
+    @Test
+    @DisplayName("단원 코드 · 이름은 레거시처럼 앞뒤 공백을 지워 내보내고, 뒤 공백이 붙은 코드도 제출과 같은 단원으로 묶는다")
+    void unitCodeAndNameAreTrimmedInResponse() {
+        UnitRow paddedUnit = new UnitRow("M5-1  ", "  분수의 덧셈과 뺄셈 ", new BigDecimal("0.30"));
+        when(gradeReportRepository.countEnrolled("C1")).thenReturn(1);
+        when(gradeReportRepository.findClassSubmissions("C1")).thenReturn(List.of(
+            submission(1, "STU-1", "M5-1", "80.0", DUE, "S")));
+        when(gradeReportRepository.findUnits()).thenReturn(List.of(paddedUnit));
+
+        UnitReportResponse row = gradeReportService.classReport("C1").items().get(0);
+
+        assertThat(row.unit()).isEqualTo("M5-1");
+        assertThat(row.unitName()).isEqualTo("분수의 덧셈과 뺄셈");
+        assertThat(row.submitted()).isEqualTo(1);
+        assertThat(row.maxScore()).isEqualTo("80.0");
+    }
+
+    @Test
     @DisplayName("같은 제출 시각이면 id 가 큰 쪽을 인정한다")
     void sameSubmittedAtPicksLargerId() {
         when(gradeReportRepository.countEnrolled("C1")).thenReturn(1);

@@ -91,7 +91,7 @@ public class GradeReportService {
     private static Map<String, UnitAggregate> aggregateEffectiveSubmissions(List<SubmissionRow> submissions) {
         Map<StudentAssignment, SubmissionRow> latest = new LinkedHashMap<>();
         for (SubmissionRow row : submissions) {
-            if (EXCLUDED_STATUS.equals(row.status())) {
+            if (isExcluded(row)) {
                 continue;
             }
             latest.merge(new StudentAssignment(sqlKey(row.studentId()), sqlKey(row.assignmentId())), row,
@@ -104,6 +104,11 @@ public class GradeReportService {
             byUnit.computeIfAbsent(sqlKey(row.unitCode()), k -> new UnitAggregate()).add(effectiveScore(row, late), late);
         }
         return byUnit;
+    }
+
+    /** status = 'X' 를 DB 정렬 규칙(대소문자 · 뒤 공백 무시)대로 비교한다(BR-01, REP:89 · REP:152). */
+    private static boolean isExcluded(SubmissionRow row) {
+        return EXCLUDED_STATUS.equals(sqlKey(row.status()));
     }
 
     /** ORDER BY submitted_at DESC, id DESC 의 첫 행(BR-02, REP:83). */
@@ -122,7 +127,7 @@ public class GradeReportService {
     private static Map<String, Integer> countExcluded(List<SubmissionRow> submissions) {
         Map<String, Integer> excluded = new HashMap<>();
         for (SubmissionRow row : submissions) {
-            if (EXCLUDED_STATUS.equals(row.status())) {
+            if (isExcluded(row)) {
                 excluded.merge(sqlKey(row.unitCode()), 1, Integer::sum);
             }
         }
@@ -155,8 +160,8 @@ public class GradeReportService {
         }
 
         return new UnitReportResponse(
-            unit.code(),
-            unit.name(),
+            unit.code().trim(), // 레거시는 DECIMAL 외 값을 trim 해서 내보낸다(GradeRepository.java:52)
+            unit.name().trim(),
             enrolled,
             submitted,
             enrolled - submitted, // 레거시 그대로 — 단원에 과제가 여럿이면 음수가 될 수 있다(REP:117)
