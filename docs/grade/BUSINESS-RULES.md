@@ -410,12 +410,12 @@
 | 빈 학급 | `REP:33-51` | `SVC:63` | 동일 | 재적 0명 → 빈 결과 |
 | BR-01 · BR-02 | `REP:81-93` | `SVC:90-111` | 동일(수정 후) | X 를 먼저 빼고 최신 1건. **수정 전 다름** — SQL `PARTITION BY` 는 대소문자 · 뒤 공백을 무시하는데 Java 맵은 정확히 같은 문자열만 묶었다. `sqlKey`(`SVC:179`)로 맞춤 |
 | BR-05 · BR-06 | `REP:69-74` | `SVC:102`, `:115-118` | 동일 | `>` 비교, `ROUND(점수 × 0.9, 1)` = HALF_UP. 시드의 반올림 경계 5건으로 테스트가 확인 |
-| BR-21 | `REP:116-117`, `:136-145` | `SVC:103`, `:161` | 동일(수정 후) | 단원 키는 제출의 `unit_code`. 수정 전에는 단원 코드도 정확 일치로만 묶었다(위와 같은 원인) |
+| BR-21 | `REP:116-117`, `:136-145` | `SVC:104`, `:161` | 동일(수정 후) | 단원 키는 제출의 `unit_code`. 수정 전에는 단원 코드도 정확 일치로만 묶었다(위와 같은 원인) |
 | BR-22 | `REP:146-155` | `SVC:121-128` | 동일 | X 행 전부. 새 코드는 과제와 조인한 행에서 세지만 `assignment_id` 가 NOT NULL FK 라 빠지는 행이 없다 |
 | BR-18 · BR-19 | `REP:120-127` | `SVC:138-144`, `:170-173` | 동일(수정 후) | **수정 전 다름** — T-SQL 은 `DECIMAL(38,1) ÷ INT` 결과를 소수 6자리에서 **버린다**(`SELECT 2.0/3` = `.666666`). 새 코드는 6자리에서 HALF_UP 반올림했다. 반 인원 약 200만 명 미만에서는 최종 2자리 결과가 같다(0.1점 단위 합계 × 인원 1~60 전수 계산에서 차이 0건) |
 | BR-20 | `REP:128-133` | `SVC:147-155` | 동일 | 미제출 있으면 최저 0.0, 보너스는 제출자 최저 |
 | BR-25 · BR-27 | `GradeRepository.java:45-53`, `REP:107-109` | `SVC:188-190`, `UnitReportResponse` | 동일 | 자릿수 유지 문자열, NULL → `""`. 정수 열은 JSON 숫자(정규화 후 같음) |
-| 단원 순서 | `REP:193` | `REPO:28-29` | 동일 | DB 에서 `ORDER BY` (DB · 서버 정렬 규칙 모두 `SQL_Latin1_General_CP1_CI_AS`) |
+| 단원 순서 | `REP:193` | `REPO:38-40` | 동일 | DB 에서 `ORDER BY` (DB · 서버 정렬 규칙 모두 `SQL_Latin1_General_CP1_CI_AS`) |
 | BR-23 | `REP:161-177` | 없음 | **누락(의도)** | 보고 시각을 쓰지 않는다. 읽기 전용 계정 사용. 응답에 나오지 않아 테스트가 못 잡음 |
 | BR-26 | `GradeController.java:57-58`, `:108-113` | `REPO` `query`(DB 오류 → `DatabaseUnavailableException`), `modern/api/src/main/java/com/example/common/GlobalExceptionHandler.java` `handleDatabaseUnavailable` | 상태 코드 동일 · 메시지 **의도적 차이** | 결정(2026-09-29): 502 는 레거시와 맞추고, DB 원문 메시지 대신 "성적 DB 조회에 실패했습니다" 를 싣는다(원문 노출은 보안상 의심 동작). `@WebMvcTest` · 리포지토리 단위 테스트로 고정 |
 | 연결 풀 | `legacy/grade-mssql/src/main/resources/application.properties:11-13` (최대 3, 대기 5초) | `modern/api/src/main/resources/application.yml` `grades.datasource` (최대 2, 대기 3초) | **추가 · 다름** | 몰리면 새 API 가 더 빨리 실패한다 |
