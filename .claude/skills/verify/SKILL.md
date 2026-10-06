@@ -1,0 +1,78 @@
+---
+name: verify
+description: AI 가 만든 변경분이나 외주사 PR(vendor-prs/*.patch)을 머지하기 전에, 요청 범위 · diff · 승인 체크리스트 · 테스트 실행 결과로 승인 / 반려를 판정하고 이슈를 파일:줄번호 표로 보고합니다. "검증해 줘", "머지 전 검수", "PR 승인 판정", "외주 PR 리뷰" 같은 요청에 사용합니다.
+argument-hint: "[검증 범위 — git 범위(예: upstream/main...HEAD) · 브랜치 · patch 파일 경로. 생략하면 upstream/main...HEAD]"
+---
+
+# 머지 전 검증
+
+검증 대상: $ARGUMENTS
+
+- 인자가 비어 있으면 `git diff upstream/main...HEAD` 를 대상으로 삼는다. 이 저장소는 포크라 내 포크의 `main` 이 아니라 원본 `upstream/main` 과 비교한다.
+- 인자가 `vendor-prs/*.patch` 경로면 patch 파일 자체가 대상이다(아래 2 · 4 단계의 patch 안내를 따른다).
+
+이 Skill 은 **리뷰하는 쪽**이다. 찾고 판정만 하며, 고치는 일은 만든 세션으로 돌려보낸다.
+기준 문서는 모두 **저장소 루트 기준** 경로다: 절차 `templates/verification-loop.md`, 항목 `templates/approval-checklist.md`, 팀 규칙 `CLAUDE.md`.
+
+## 절차
+
+### 1. 요청 범위 확인
+- 무엇을 요청했는지 한 문장으로 확보한다. patch 파일이면 머리말의 `Subject:` 줄이 요청 문장이다(`head -n 20 <patch>`).
+- 요청 문장이 주어지지 않았고 찾을 수도 없으면 **판정하지 말고 먼저 질문**한다. 범위를 추측해 "범위 이탈 없음"으로 표시하지 않는다.
+- 대상 범위에 요청 여러 건이 섞여 있으면(예: `day1` 브랜치의 문서 · Skill · 이관) 어느 요청을 판정할지, 또는 커밋 범위를 좁힐지 묻는다.
+
+### 2. 변경 파일 목록과 diff 읽기
+- 목록을 먼저 본다: git 범위면 `git diff --stat <범위>`, patch 면 `git apply --stat <patch>`.
+- 그다음 파일마다 diff 를 읽는다. 새 파일은 전체를, 수정 파일은 바뀐 줄과 그 주변을 Read 로 열어 줄번호를 확인한다.
+- patch 는 작업 브랜치에 적용하지 않는다(`CLAUDE.md` 금지 사항). 테스트 실행을 위해 적용이 필요하면 사람에게 `review/pr-N` 브랜치 적용 여부를 묻는다.
+
+### 3. 체크리스트 대조
+- 저장소 루트의 `templates/approval-checklist.md` 를 읽고, 항목마다 **충족 / 미충족 / 확인 필요** 중 하나로 표시한다.
+- 컨벤션 기준은 저장소 루트의 `CLAUDE.md` 코딩 컨벤션 · 금지 사항이다. `.claude/skills/convention-check/SKILL.md` 의 점검 항목을 같은 방식으로 적용해도 된다(그 Skill 은 테스트를 실행하지 않으므로 4단계는 이 Skill 이 따로 한다).
+- 근거 줄번호는 Read 결과에서 옮긴다. 추측한 줄번호를 쓰지 않는다.
+
+### 4. 테스트 실행 — 변경된 폴더의 테스트만
+| 변경된 폴더 | 실행 명령 |
+|---|---|
+| `modern/api/` | `cd modern/api && ./gradlew test` |
+| `modern/web/` | `cd modern/web && npm run lint && npm run typecheck && npm test` (팀 `CLAUDE.md` 의 커밋 전 검증 세트) |
+| 이관 코드(`modern/` 의 레거시 대응 엔드포인트) 또는 `characterization/` | `cd characterization && npm test` (레거시 대상) 그리고 `TARGET_BASE_URL=http://localhost:8080 npm test` (새 API 대상) |
+
+- characterization 은 서비스가 떠 있어야 한다. 성적 집계(grade)는 `docker compose --profile mssql up -d` · `--profile modern up -d` 와 8080 의 `./gradlew bootRun`(환경 변수 `GRADES_DB_PASSWORD` 필요)이 전제다. 떠 있지 않으면 실행하지 말고 그 사실을 적고 사람에게 기동을 요청한다.
+- 변경된 모듈만 보려면 `npx vitest run tests/<모듈명>.test.js` 로 좁혀도 된다(모듈명: `item-bank` · `assignment` · `grade`).
+- `characterization/` 의 테스트 · 스냅샷 파일이 diff 에 들어 있으면 테스트 결과와 별개로 미충족이다(`CLAUDE.md` 완료 기준).
+- **사용량 절약:** 대화에는 명령별 통과 / 실패 수와 실패한 테스트 이름만 남긴다. 전체 로그를 싣지 않는다(필요하면 `| tail` · `grep` 으로 요약 줄만 본다).
+
+### 5. 승인 기준 판정
+- 네 기준(테스트 통과 / 치명 이슈 0건 / 요청 범위 이탈 없음 / 컨벤션 준수)을 하나씩 판정한다. **하나라도 미충족이면 반려.**
+- 이슈가 0건이면 경고 · 제안 수준까지 한 번 더 훑은 뒤 판정한다. 0건은 결과일 수도, 안 본 것일 수도 있다.
+
+## 출력 형식 (이 순서로 고정)
+
+```
+판정: 승인 | 반려
+
+| 기준 | 결과 | 근거 |
+|---|---|---|
+| 테스트 통과 | 충족 / 미충족 | 실행 명령과 통과 · 실패 수, 실패한 테스트 이름 |
+| 치명 이슈 0건 | 충족 / 미충족 | 치명 이슈 번호 |
+| 요청 범위 이탈 없음 | 충족 / 미충족 | 요청 문장 vs 변경 파일 목록 |
+| 컨벤션 준수 | 충족 / 미충족 | 위반 이슈 번호 |
+
+이슈 목록
+| # | 심각도 | 파일:줄번호 | 근거 | 수정 방향 |
+|---|---|---|---|---|
+
+확인 필요
+| 파일 또는 범위 | 확인할 질문 |
+|---|---|
+```
+
+- 심각도는 치명 / 경고 / 제안 중 하나이며 정의는 저장소 루트의 `templates/approval-checklist.md` 를 따른다.
+- 이슈가 없으면 "이슈 없음", 확인 필요가 없으면 그 표는 생략한다.
+
+## 하지 말 것
+- 코드를 수정하지 않는다. 보고만 한다. 고치기 시작하면 리뷰어가 "만든 쪽"이 된다.
+- 근거 줄번호를 댈 수 없는 지적은 이슈로 올리지 않고 "확인 필요"로 남긴다.
+- 테스트를 실행하지 않고 통과했다고 쓰지 않는다. 실행할 수 없었으면 그 이유를 적고 해당 기준은 미충족으로 둔다.
+- 체크리스트 항목을 이 파일에 옮겨 적지 않는다. 항상 `templates/approval-checklist.md` 를 직접 읽는다.
