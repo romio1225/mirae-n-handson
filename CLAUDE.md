@@ -34,6 +34,7 @@ cd modern/web && npm run dev                                              # :517
 - 컨트롤러 메서드의 반환 타입은 `record` DTO(`*Response`) 또는 그 `List` 다. `@Entity` 클래스를 반환하지 않는다.
 - 의존성 주입은 `private final` 필드 + 생성자로 한다. `src/main` 에 `@Autowired` 가 없다.
 - 조회만 하는 서비스 메서드는 `@Transactional(readOnly = true)` 가 붙어 있다(클래스 레벨 포함).
+  - 예외: MariaDB(JPA)를 쓰지 않고 별도 JDBC 풀만 읽는 서비스(예: `com.example.grade` 의 MS-SQL `GradesJdbc`)는 붙이지 않는다. 트랜잭션 관리자가 쓰지 않는 MariaDB 연결(itembank-pool, 최대 5)을 잡기 때문이다. 이때 클래스 주석에 사유를 적는다.
 - `@Transactional` 메서드 안에서 외부 HTTP 호출이나 DB 와 무관한 반복 계산(예: `ReportService.sign`)을 하지 않는다. 그런 작업은 트랜잭션이 없는 메서드로 옮긴다.
 - 예외 → HTTP 변환은 `common/GlobalExceptionHandler` 에만 있다. 없는 리소스는 `NotFoundException`(404), 검증 실패는 400 으로 매핑된다.
 - 빈 `catch` 블록이 없다. `catch` 는 로그를 남기고 다시 던지거나 다른 예외로 감싸 던진다.
