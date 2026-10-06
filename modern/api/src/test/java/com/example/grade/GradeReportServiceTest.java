@@ -217,4 +217,97 @@ class GradeReportServiceTest {
         assertThat(normal.maxScore()).isEmpty();
         assertThat(normal.minScore()).isEqualTo("0.0");
     }
+
+    @Test
+    @DisplayName("일반 단원에 재적 전원이 제출하면 최저는 0.0 이 아니라 실제 최저 점수다")
+    void normalUnitAllSubmittedUsesActualMin() {
+        when(gradeReportRepository.countEnrolled("C1")).thenReturn(2);
+        when(gradeReportRepository.findClassSubmissions("C1")).thenReturn(List.of(
+            submission(1, "STU-1", "M5-1", "80.0", DUE, "S"),
+            submission(2, "STU-2", "M5-1", "65.5", DUE, "S")));
+        when(gradeReportRepository.findUnits()).thenReturn(List.of(NORMAL_UNIT));
+
+        UnitReportResponse row = gradeReportService.classReport("C1").items().get(0);
+
+        assertThat(row.missing()).isZero();
+        assertThat(row.minScore()).isEqualTo("65.5");
+        assertThat(row.maxScore()).isEqualTo("80.0");
+        assertThat(row.avgScore()).isEqualTo("72.75");
+    }
+
+    @Test
+    @DisplayName("최신이 아닌 상태 X 제출도 제외 수에 센다 — 최신 1건 선택과 무관")
+    void olderExcludedSubmissionIsStillCounted() {
+        when(gradeReportRepository.countEnrolled("C1")).thenReturn(1);
+        when(gradeReportRepository.findClassSubmissions("C1")).thenReturn(List.of(
+            submission(1, "STU-1", "M5-1", "40.0", DUE.minusDays(3), "X"),
+            submission(2, "STU-1", "M5-1", "88.0", DUE.minusDays(1), "S")));
+        when(gradeReportRepository.findUnits()).thenReturn(List.of(NORMAL_UNIT));
+
+        UnitReportResponse row = gradeReportService.classReport("C1").items().get(0);
+
+        assertThat(row.submitted()).isEqualTo(1);
+        assertThat(row.excluded()).isEqualTo(1);
+        assertThat(row.maxScore()).isEqualTo("88.0");
+    }
+
+    @Test
+    @DisplayName("상태 X 만 있는 단원은 제출 0 · 제외 수만 세고, 일반 단원 평균은 0.00 · 최고는 빈 값")
+    void unitWithOnlyExcludedSubmissions() {
+        when(gradeReportRepository.countEnrolled("C1")).thenReturn(2);
+        when(gradeReportRepository.findClassSubmissions("C1")).thenReturn(List.of(
+            submission(1, "STU-1", "M5-1", "90.0", DUE, "X"),
+            submission(2, "STU-2", "M5-1", "70.0", DUE, "X")));
+        when(gradeReportRepository.findUnits()).thenReturn(List.of(NORMAL_UNIT));
+
+        UnitReportResponse row = gradeReportService.classReport("C1").items().get(0);
+
+        assertThat(row.submitted()).isZero();
+        assertThat(row.missing()).isEqualTo(2);
+        assertThat(row.excluded()).isEqualTo(2);
+        assertThat(row.avgScore()).isEqualTo("0.00");
+        assertThat(row.maxScore()).isEmpty();
+        assertThat(row.minScore()).isEqualTo("0.0");
+    }
+
+    @Test
+    @DisplayName("점수 없는 지연 제출은 0.0 으로 보고 지연 수에 센다")
+    void lateSubmissionWithNullScoreIsZero() {
+        when(gradeReportRepository.countEnrolled("C1")).thenReturn(1);
+        when(gradeReportRepository.findClassSubmissions("C1")).thenReturn(List.of(
+            submission(1, "STU-1", "M5-1", null, DUE.plusDays(3), "S")));
+        when(gradeReportRepository.findUnits()).thenReturn(List.of(NORMAL_UNIT));
+
+        UnitReportResponse row = gradeReportService.classReport("C1").items().get(0);
+
+        assertThat(row.late()).isEqualTo(1);
+        assertThat(row.submitted()).isEqualTo(1);
+        assertThat(row.maxScore()).isEqualTo("0.0");
+        assertThat(row.minScore()).isEqualTo("0.0");
+        assertThat(row.avgScore()).isEqualTo("0.00");
+    }
+
+    @Test
+    @DisplayName("응답 행은 단원 목록 순서 그대로이고 count 는 단원 수, message 는 null")
+    void responseFollowsUnitOrderAndCount() {
+        when(gradeReportRepository.countEnrolled("C1")).thenReturn(1);
+        when(gradeReportRepository.findClassSubmissions("C1")).thenReturn(List.of());
+        when(gradeReportRepository.findUnits()).thenReturn(List.of(BONUS_UNIT, NORMAL_UNIT));
+
+        GradeReportResponse result = gradeReportService.classReport("C1");
+
+        assertThat(result.count()).isEqualTo(2);
+        assertThat(result.message()).isNull();
+        assertThat(result.items()).extracting(UnitReportResponse::unit).containsExactly("M6-2", "M5-1");
+        assertThat(result.items().get(0).avgScore()).isEmpty();
+        assertThat(result.items().get(0).minScore()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("sqlKey 는 뒤 공백만 지우고 대문자로 바꾼다 — 앞 공백은 남긴다")
+    void sqlKeyTrimsTrailingSpacesOnly() {
+        assertThat(GradeReportService.sqlKey("m5-1  ")).isEqualTo("M5-1");
+        assertThat(GradeReportService.sqlKey(" m5-1")).isEqualTo(" M5-1");
+        assertThat(GradeReportService.sqlKey("   ")).isEmpty();
+    }
 }
