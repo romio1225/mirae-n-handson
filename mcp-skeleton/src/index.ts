@@ -27,6 +27,44 @@ server.registerTool(
 // - 감쌀 API 는 ./itemApi.js 에 있다 (ESM 이라 확장자를 .js 로 적는다)
 // - import 문도 이 자리에 함께 붙여 넣어도 된다
 // ================================================================
+import * as z from 'zod/v4';
+import { searchItems } from './itemApi.js';
+
+/** 한 번에 돌려줄 수 있는 최대 건수 */
+const MAX_LIMIT = 20;
+/** limit 을 주지 않았을 때의 건수 */
+const DEFAULT_LIMIT = 5;
+
+server.registerTool(
+  'search_items',
+  {
+    description:
+      '문항 은행(사내 문항 조회 API)에서 키워드 · 단원 · 난이도로 문항을 검색한다. ' +
+      '문항 본문이나 태그, 단원별 문항 구성을 확인해야 할 때 사용한다. 읽기 전용이며 문항을 바꾸지 않는다. ' +
+      '난이도는 이 API 표기인 하 · 중 · 상 이다(itembank DB 의 level 1~5 와 다르다).',
+    inputSchema: z.object({
+      keyword: z.string().describe('문항 본문 또는 태그에서 찾을 키워드 (예: 분수, 문장제)'),
+      unit: z.string().optional().describe('단원 코드(예: M5-1) 또는 단원 이름 일부(예: 분수의 곱셈)'),
+      difficulty: z.enum(['하', '중', '상']).optional().describe('난이도: 하 · 중 · 상 중 하나'),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(MAX_LIMIT)
+        .default(DEFAULT_LIMIT)
+        .describe(`돌려줄 최대 건수 (1~${MAX_LIMIT}, 기본 ${DEFAULT_LIMIT})`)
+    })
+  },
+  async ({ keyword, unit, difficulty, limit }) => {
+    const items = await searchItems({ keyword, unit, difficulty, limit });
+    console.error(`search_items: ${items.length}건`);
+    const text =
+      items.length > 0
+        ? JSON.stringify(items, null, 2)
+        : `검색 결과 없음: ${JSON.stringify({ keyword, unit, difficulty, limit })}`;
+    return { content: [{ type: 'text', text }] };
+  }
+);
 
 async function main() {
   const transport = new StdioServerTransport();
