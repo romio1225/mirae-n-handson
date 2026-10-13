@@ -67,5 +67,19 @@
       "mcp__github__list_issues",
       "mcp__item-bank__search_items"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hook-node.sh hooks/block-dangerous.mjs",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }
