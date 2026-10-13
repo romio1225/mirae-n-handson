@@ -15,7 +15,8 @@ try {
 if (input.tool_name !== "Bash") process.exit(0);
 
 const command = String(input.tool_input?.command ?? "").trim();
-if (!command.startsWith("git commit")) process.exit(0);
+// 시작만 보면 `git add . && git commit` 같은 복합 명령을 놓친다. 명령 어디든 git commit 이 있으면 검사한다.
+if (!command.includes("git commit")) process.exit(0);
 
 let diff = "";
 try {

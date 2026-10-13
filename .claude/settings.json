@@ -82,6 +82,11 @@
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hook-node.sh hooks/secret-scan.mjs",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hook-node.sh hooks/ask-risky.mjs",
+            "timeout": 10
           }
         ]
       }

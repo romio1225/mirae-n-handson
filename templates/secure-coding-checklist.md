@@ -54,8 +54,8 @@ AI 도구를 써서 코드를 만들고 실행하는 팀이 지켜야 할 최소
 | 2. `DROP` · `TRUNCATE` 금지 | Hook + reviewer | `block-dangerous.mjs` RULES[1](`DROP TABLE` · `DROP DATABASE`) · 승인 체크리스트 2장 `DROP`·`TRUNCATE` 항목 | 구현됨 (한계: Hook 은 `TRUNCATE` 를 보지 않음 — 미구현) |
 | 3. 강제 push · `reset --hard` 금지 | 권한 | settings deny `Bash(git push --force *)` · `Bash(git push -f *)` · `Bash(git reset --hard *)`, 나머지 push 는 ask `Bash(git push *)` | 구현됨 (한계: `--force-with-lease` · `+브랜치` 는 deny 가 아니라 ask 로 감) |
 | 4. 받은 스크립트 바로 실행 금지 | 권한 | settings deny `Bash(curl *)` · `Bash(wget *)` | 구현됨 (한계: 다른 다운로드 수단 · 스크립트 언어로 받는 경로는 못 막음) |
-| 5. `chmod 777` 금지 | Hook | — (`block-dangerous.mjs` 에 규칙 추가 후보) | 미구현 |
-| 6. 비밀값 리터럴 금지 | Hook + reviewer | `secret-scan.mjs` PATTERNS(AWS Access Key ID · 하드코딩 password · PEM 개인키) · 승인 체크리스트 2장 비밀값 항목 | 구현됨 (한계: 명령이 `git commit` 으로 시작할 때만 검사, 토큰 형식 패턴 없음) |
+| 5. `chmod 777` 금지 | Hook | `block-dangerous.mjs` RULES[3](`chmod` … `777` · `0777`) | 오늘 추가 (한계: `a+rwx` 같은 기호 표기는 못 잡음) |
+| 6. 비밀값 리터럴 금지 | Hook + reviewer | `secret-scan.mjs` PATTERNS(AWS Access Key ID · 하드코딩 password · PEM 개인키) · 승인 체크리스트 2장 비밀값 항목 | 구현됨 (명령 어디든 `git commit` 이 있으면 검사 — `git add … && git commit` 도 잡음. 한계: 토큰 형식 패턴 없음) |
 | 7. 시크릿 파일 읽기 금지 | 권한 | settings deny `Read(./.env)` · `Read(./.env.*)` · `Read(./secrets/**)` · `Read(**/*.pem)` · `Read(~/.ssh/**)` · `Read(~/.aws/**)` + 같은 경로 `Edit` | 구현됨 (한계: 파일 이름 없는 `grep -r` 은 값을 그대로 보여 줌 — Day 3-3 실습 2 확인) |
 | 8. 운영 DB 직접 접속 금지 | Hook + 권한 + reviewer | `block-dangerous.mjs` RULES[2] `prod[-.]db` · settings deny `Bash(*prod-db*)` · `Bash(*prod.db*)` · ask `mcp__dbhub` · `mcp__dbhub-mssql` · 승인 체크리스트 2장 운영 DB 호스트 항목 | 구현됨 (한계: 호스트 이름이 명령 글자에 있을 때만, 환경 변수 · 별칭 뒤는 못 잡음) |
 | 9. SQL 파라미터 바인딩 | reviewer | 승인 체크리스트 2장 SQL 문자열 이어 붙이기 항목 | 구현됨 |

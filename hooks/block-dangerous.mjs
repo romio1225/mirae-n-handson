@@ -20,6 +20,7 @@ const RULES = [
   { pattern: /\brm\b(?=[^;&|]*\s(-[a-zA-Z]*[rR]|--recursive))(?=[^;&|]*\s(-[a-zA-Z]*f|--force))/, reason: "rm -rf(-fr · -r -f · -Rf · --recursive --force 포함)는 금지되어 있습니다. 삭제 대상을 구체적으로 지정하거나 사람에게 요청하세요." },
   { pattern: /DROP\s+(TABLE|DATABASE)/i, reason: "DROP TABLE / DROP DATABASE 는 금지되어 있습니다." },
   { pattern: /prod[-.]db/, reason: "운영 DB 호스트(prod-db / prod.db)에 대한 접근은 금지되어 있습니다." },
+  { pattern: /\bchmod\b[^;&|]*\s0?777\b/, reason: "chmod 777 은 금지되어 있습니다. 모든 사용자에게 쓰기 · 실행 권한이 생깁니다. 필요한 권한만 주세요(예: 파일 644, 실행 파일 755)." },
 ];
 
 for (const { pattern, reason } of RULES) {
