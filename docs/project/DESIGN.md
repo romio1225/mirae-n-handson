@@ -27,13 +27,15 @@
 - 경보 알림 대상(SNS 토픽 · 구독) 추가 — 리소스가 2개 이상이 되어 최소 범위("리소스 하나")를 넘는다. 경보는 `alarm_actions` 없이도 생성 · 리뷰할 수 있다.
 - CPU · 연결 수 등 다른 지표 경보 — 같은 이유로 리소스 하나에 집중한다.
 - `envs/dev` · `modules/` 구조로 재편, 보안 그룹 인라인 규칙을 `aws_security_group_rule` 로 분리 — 템플릿 컨벤션과 다르지만 기존 코드 리팩토링은 이번 목표가 아니다.
-- `.gitignore` 에 `.terraform/` · `*.tfstate*` 추가 — 요청 범위 밖 파일이다. 대신 `TF_DATA_DIR` 를 저장소 밖으로 두고 `.terraform.lock.hcl` 은 커밋하지 않는다.
+- `.gitignore` 에 `.terraform/` · `*.tfstate*` 추가 — 요청 범위 밖 파일이다. 대신 init · validate 를 저장소 밖 임시 복사본에서 실행해 부산물이 저장소에 생기지 않게 한다.
 - tflint · checkov 설치와 실행 — 새 도구 설치는 범위 밖이고, 리뷰는 `iac-reviewer` 1회로 충분하다.
 
 ## 4. 미해결 질문
-- `pipeline-samples/README.md` 는 "실습 중 고친 내용은 끝나기 전에 되돌린다"(Day 3-2 기준)고 적혀 있다. 이번 산출물인 `monitoring.tf` 는 Day 4-3 피어리뷰 증거로 커밋해 둘 예정이다. 강사 의도와 맞는지 확인이 필요하다.
-- 경보 임계값(남은 저장 공간 몇 GB 이하)은 운영 기준이 없다. `allocated_storage = 20`(GB)의 10%인 2 GiB 를 이름 붙인 지역 값으로 두고, 근거는 "dev 기본값"으로만 적는다.
-- `terraform init -backend=false` 는 provider(hashicorp/aws ~> 4.67)를 내려받으려고 네트워크에 접속한다. 사내 네트워크에서 막히면 validate 는 "실행하지 못함"으로 기록한다.
+설계 시점에 남았던 질문 3개를 아래처럼 정리했다. 남은 미해결 질문은 없다.
+
+- ~~`pipeline-samples/README.md` 의 "실습 중 고친 내용은 끝나기 전에 되돌린다"와 산출물 커밋이 충돌하는가~~ → **충돌하지 않는 것으로 정리.** 그 규칙은 Day 3-2 실습 3 · 4 가 기존 `main.tf` · `variables.tf` 를 일부러 망가뜨렸다가 원상 복구하라는 뜻이다. 이번에는 새 파일 `monitoring.tf` 만 더하고 두 파일은 건드리지 않는다(완성 기준 4번으로 확인). Day 4-1 은 "완성 기준을 충족한 상태로 커밋"이 산출물이므로 커밋해 둔다.
+- ~~경보 임계값의 근거~~ → **실습용 더미 값으로 확정.** `allocated_storage = 20`(GB)의 10%인 2 GiB(2147483648 바이트)를 `locals` 의 이름 붙인 값으로 두고, 주석에 "실습용 dev 기본값, 운영 기준 아님"이라고 적는다.
+- ~~`terraform init` 의 네트워크 접속 가능 여부~~ → **확인함.** 2026-10-20 저장소 밖 임시 복사본에서 `terraform init -backend=false` 가 provider 를 받았고 기존 코드의 `terraform validate` 가 `Success! The configuration is valid.` 를 출력했다. 단계 1도 같은 방식(임시 복사본에서 init · validate)으로 해서 `.terraform/` · `.terraform.lock.hcl` 이 저장소에 생기지 않게 한다.
 
 ## 5. 단계
 **단계 1 — 경보 리소스 생성**
@@ -41,11 +43,11 @@
 - 만들 파일: `pipeline-samples/terraform/monitoring.tf`
 - 확인 방법:
   ```bash
-  cd pipeline-samples/terraform && terraform fmt -check && echo FMT_OK
-  export TF_DATA_DIR="$TMPDIR/tf-day4" && terraform init -backend=false -input=false && terraform validate
+  cd pipeline-samples/terraform && terraform fmt -check && echo FMT_OK && cd -
+  T="$(mktemp -d)" && cp pipeline-samples/terraform/*.tf "$T"/ && (cd "$T" && terraform init -backend=false -input=false >/dev/null && terraform validate)
   git status --short pipeline-samples/terraform/
   ```
-  `FMT_OK`, `Success! The configuration is valid.` 가 보이고, git status 에 `?? pipeline-samples/terraform/monitoring.tf` 와 `.terraform.lock.hcl` 만 보이면 통과다(lock 파일은 지우고 커밋하지 않는다).
+  `FMT_OK`, `Success! The configuration is valid.` 가 보이고, git status 에 `?? pipeline-samples/terraform/monitoring.tf` 한 줄만 보이면 통과다.
 
 **단계 2 — IaC 리뷰 1회**
 - 할 일: `iac-reviewer` Sub-agent 에 `day4-start..HEAD` 의 `pipeline-samples/terraform/` 변경만 넘겨 검토를 받고, 결과를 그대로 저장한다. 반려면 지적을 고친 뒤 한 번 더 리뷰하고, 두 결과를 모두 남긴다.
